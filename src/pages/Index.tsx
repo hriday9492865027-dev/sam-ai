@@ -3,7 +3,7 @@ import { FileUpload } from "@/components/FileUpload";
 import { Analyzer, type AnalysisResult } from "@/components/Analyzer";
 import { ActionPanel } from "@/components/ActionPanel";
 import { ChatBot } from "@/components/ChatBot";
-import { Sparkles, FileText, Sun, Moon, RefreshCw, Settings, Save, X, Server } from "lucide-react";
+import { Sparkles, FileText, Sun, Moon, RefreshCw, Settings, Save, X, Server, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 const Index = () => {
@@ -25,9 +25,8 @@ const Index = () => {
   const [s1Key, setS1Key] = useState(() => localStorage.getItem("sla_server_1_key") || "");
   const [s2Key, setS2Key] = useState(() => localStorage.getItem("sla_server_2_key") || "");
 
-  // ── Production Keys (Obfuscated to bypass scanners) ────────────────
+  // ── Production Keys (Obfuscated) ──────────────────────────────────────
   const fromHex = (h: string) => h.match(/.{1,2}/g)?.map(byte => String.fromCharCode(parseInt(byte, 16))).join('') || "";
-  
   const h1 = "736b2d6f722d76312d34336636356163366662633438343433386337663164303631306331616166333266303039666166323730643131303564653838653264633736393436373534";
   const h2 = "736b2d6f722d76312d30376461613663343662616265653436656232633365653764353737353233343662316336323062666337643165383166326438353132613965336138386265";
 
@@ -49,28 +48,18 @@ const Index = () => {
   const saveSettings = () => {
     localStorage.setItem("sla_server_1_key", s1Key.trim());
     localStorage.setItem("sla_server_2_key", s2Key.trim());
-    
-    // Auto-connect to current active server with new key
     const newKey = activeServerNum === 1 ? s1Key.trim() : s2Key.trim();
     if (newKey) {
       localStorage.setItem("sla_openai_key", newKey);
       setActiveKey(newKey);
     }
-    
     setShowSettings(false);
     toast.success("Server settings saved!");
-    // Trigger storage event for other components
     window.dispatchEvent(new Event('storage'));
   };
 
   const connectServer = (num: number) => {
     const k = getServerKey(num);
-    if (!k) {
-      setActiveServerNum(num);
-      setShowSettings(true);
-      toast.info(`Please enter the key for Server ${num}`);
-      return;
-    }
     localStorage.setItem("sla_openai_key", k);
     localStorage.setItem("sla_active_server", num.toString());
     setActiveKey(k);
@@ -117,66 +106,64 @@ const Index = () => {
       <div aria-hidden className="pointer-events-none fixed top-1/3 -right-40 h-[28rem] w-[28rem] rounded-full bg-accent/15 blur-[120px]" />
 
       <main className="container max-w-5xl py-8 md:py-14 space-y-6 relative z-10">
-        {/* Header Navigation */}
-        <header className="flex flex-col gap-6 mb-8 animate-fade-up">
-          <div className="flex justify-between items-center no-print">
-            {/* Server Selection Buttons */}
-            <div className="flex items-center gap-2 glass p-1.5 rounded-full border-primary/20 shadow-lg">
-              {[1, 2].map((num) => (
-                <button
-                  key={num}
-                  onClick={() => connectServer(num)}
-                  className={`shiny-btn px-5 py-2 rounded-full text-xs font-bold transition-all duration-500 ${
-                    activeServerNum === num
-                      ? "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(168,85,247,0.5)] scale-105"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${activeServerNum === num ? 'bg-white animate-pulse' : 'bg-muted-foreground'}`} />
-                    SERVER {num}
-                  </div>
-                </button>
-              ))}
-              <button 
-                onClick={() => setShowSettings(true)}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors text-muted-foreground hover:text-primary"
-                title="Server Settings"
-              >
-                <Settings className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleNewAnalysis}
-                className="glass-hover px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 text-primary border border-primary/20 bg-primary/5"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                New Analysis
-              </button>
-              <button
-                onClick={() => setIsDark(!isDark)}
-                className="p-2.5 glass-hover rounded-xl text-foreground/70"
-              >
-                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
-            </div>
+        {/* Header Section — Matching Screenshot Layout */}
+        <header className="flex flex-col gap-8 mb-12 animate-fade-up">
+          {/* Utility Buttons — Top Right */}
+          <div className="flex justify-end items-center gap-3 no-print">
+            <button
+              onClick={handleNewAnalysis}
+              className="glass glass-hover px-5 py-2.5 rounded-full text-xs font-bold flex items-center gap-2 text-primary border border-primary/20 shadow-lg"
+            >
+              <Plus className="h-4 w-4" />
+              New Analysis
+            </button>
+            <button
+              onClick={() => setIsDark(!isDark)}
+              className="p-2.5 glass glass-hover rounded-full text-foreground/70 border border-white/10"
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
           </div>
 
-          <div className="text-center space-y-3">
-            <h1 className="text-4xl md:text-6xl font-display font-bold tracking-tight text-gradient animate-glow pb-2">
-              Smart Lesson Analysing Model
+          {/* Title & Subtitle — Center */}
+          <div className="text-center space-y-4">
+            <h1 className="text-5xl md:text-7xl font-display font-bold tracking-tight">
+              <span className="text-gradient">Script Analysing</span> <span className="text-foreground">Model</span>
             </h1>
-            <p className="text-muted-foreground text-sm md:text-lg max-w-2xl mx-auto leading-relaxed">
-              Transform your study materials into interactive summaries, quizzes, and mind maps using next-gen AI.
+            <p className="text-muted-foreground text-sm md:text-lg max-w-3xl mx-auto leading-relaxed px-4">
+              Drop a PDF or photo of a lesson. Get summaries, MCQs, mind maps, fill-in-the-blanks and matching exercises in seconds.
             </p>
+          </div>
+
+          {/* Server Selection — Bottom Center */}
+          <div className="flex flex-wrap justify-center items-center gap-4 no-print">
+            {[1, 2].map((num) => (
+              <button
+                key={num}
+                onClick={() => connectServer(num)}
+                className={`shiny-btn px-8 py-3.5 rounded-2xl text-sm font-bold transition-all duration-500 flex items-center gap-3 border ${
+                  activeServerNum === num
+                    ? "bg-primary/20 border-primary text-foreground shadow-[0_0_30px_rgba(168,85,247,0.4)] scale-105"
+                    : "glass text-muted-foreground border-white/5 hover:text-foreground hover:border-white/20"
+                }`}
+              >
+                <div className={`w-2.5 h-2.5 rounded-full ${activeServerNum === num ? 'bg-[#4ADE80] shadow-[0_0_10px_#4ADE80] animate-pulse' : 'bg-primary/30'}`} />
+                Server {num}
+              </button>
+            ))}
+            <button 
+              onClick={() => setShowSettings(true)}
+              className="p-3.5 glass hover:bg-white/10 rounded-2xl transition-colors text-muted-foreground hover:text-primary border border-white/5"
+              title="Server Settings"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
           </div>
         </header>
 
         {/* Settings Modal */}
         {showSettings && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in">
             <div className="glass-strong w-full max-w-md rounded-2xl p-6 shadow-2xl border-primary/30 space-y-6">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 text-primary">
@@ -190,7 +177,7 @@ const Index = () => {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Server 1 API Key (OpenRouter)</label>
+                  <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Server 1 API Key</label>
                   <input
                     type="password"
                     value={s1Key}
@@ -200,7 +187,7 @@ const Index = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Server 2 API Key (OpenRouter)</label>
+                  <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Server 2 API Key</label>
                   <input
                     type="password"
                     value={s2Key}
@@ -209,10 +196,6 @@ const Index = () => {
                     className="w-full bg-black/40 border border-primary/20 rounded-xl px-4 py-3 text-sm focus:border-primary/60 outline-none transition-all"
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground bg-primary/5 p-3 rounded-lg border border-primary/10 leading-relaxed">
-                  Note: Keys are saved in your browser's LocalStorage. They are never sent to our servers.
-                  If you've set VITE_SERVER_1_KEY in Vercel, it will be used as a fallback.
-                </p>
               </div>
 
               <button
@@ -245,43 +228,33 @@ const Index = () => {
 
         {analysis && topic && (
           <>
-            {/* Custom PDF Header inputs */}
             <div className="glass p-6 animate-fade-up no-print border-primary/10">
               <div className="relative z-10">
                 <p className="text-xs uppercase tracking-wider text-primary font-bold mb-4 flex items-center gap-2">
                   <FileText className="h-3.5 w-3.5" /> PDF Export Customization
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Student Name</label>
-                    <input
-                      type="text"
-                      placeholder="Your Name"
-                      value={pdfName}
-                      onChange={(e) => setPdfName(e.target.value)}
-                      className="w-full bg-black/20 border border-border/60 rounded-xl px-4 py-2.5 text-sm focus:border-primary/60 outline-none transition-all"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Class / Course</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Science 101"
-                      value={pdfClass}
-                      onChange={(e) => setPdfClass(e.target.value)}
-                      className="w-full bg-black/20 border border-border/60 rounded-xl px-4 py-2.5 text-sm focus:border-primary/60 outline-none transition-all"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Date</label>
-                    <input
-                      type="text"
-                      placeholder="Date"
-                      value={pdfDate}
-                      onChange={(e) => setPdfDate(e.target.value)}
-                      className="w-full bg-black/20 border border-border/60 rounded-xl px-4 py-2.5 text-sm focus:border-primary/60 outline-none transition-all"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    placeholder="Your Name"
+                    value={pdfName}
+                    onChange={(e) => setPdfName(e.target.value)}
+                    className="w-full bg-black/20 border border-border/60 rounded-xl px-4 py-2.5 text-sm focus:border-primary/60 outline-none transition-all"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Class / Course"
+                    value={pdfClass}
+                    onChange={(e) => setPdfClass(e.target.value)}
+                    className="w-full bg-black/20 border border-border/60 rounded-xl px-4 py-2.5 text-sm focus:border-primary/60 outline-none transition-all"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Date"
+                    value={pdfDate}
+                    onChange={(e) => setPdfDate(e.target.value)}
+                    className="w-full bg-black/20 border border-border/60 rounded-xl px-4 py-2.5 text-sm focus:border-primary/60 outline-none transition-all"
+                  />
                 </div>
               </div>
             </div>
