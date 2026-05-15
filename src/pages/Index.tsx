@@ -7,13 +7,34 @@ import { Sparkles, FileText, Sun, Moon, RefreshCw, Settings, Save, X, Server, Pl
 import { toast } from "sonner";
 
 const Index = () => {
-  const [text, setText] = useState<string>(() => localStorage.getItem("sla_extracted_text") || "");
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(() => {
-    const saved = localStorage.getItem("sla_analysis_result");
-    return saved ? JSON.parse(saved) : null;
+  const [text, setText] = useState<string>(() => {
+    try { return localStorage.getItem("sla_extracted_text") || ""; } catch { return ""; }
   });
-  const [topic, setTopic] = useState<string>(() => localStorage.getItem("sla_selected_topic") || "");
-  const [isDark, setIsDark] = useState(() => !document.documentElement.classList.contains("light"));
+  
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(() => {
+    try {
+      const saved = localStorage.getItem("sla_analysis_result");
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      // Basic validation: ensure it's an object and not empty
+      return (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) ? parsed : null;
+    } catch (e) {
+      console.error("Failed to parse analysis:", e);
+      return null;
+    }
+  });
+
+  const [topic, setTopic] = useState<string>(() => {
+    try { return localStorage.getItem("sla_selected_topic") || ""; } catch { return ""; }
+  });
+
+  const [isDark, setIsDark] = useState(() => {
+    try {
+      return !document.documentElement.classList.contains("light");
+    } catch {
+      return true;
+    }
+  });
 
   // ── Custom PDF Header state ───────────────────────────────────────────
   const [pdfName, setPdfName] = useState("");
@@ -22,11 +43,22 @@ const Index = () => {
 
   // ── Server Key Management ──────────────────────────────────────────────
   const [showSettings, setShowSettings] = useState(false);
-  const [s1Key, setS1Key] = useState(() => localStorage.getItem("sla_server_1_key") || "");
-  const [s2Key, setS2Key] = useState(() => localStorage.getItem("sla_server_2_key") || "");
+  const [s1Key, setS1Key] = useState(() => {
+    try { return localStorage.getItem("sla_server_1_key") || ""; } catch { return ""; }
+  });
+  const [s2Key, setS2Key] = useState(() => {
+    try { return localStorage.getItem("sla_server_2_key") || ""; } catch { return ""; }
+  });
 
   // ── Production Keys (Obfuscated) ──────────────────────────────────────
-  const fromHex = (h: string) => h.match(/.{1,2}/g)?.map(byte => String.fromCharCode(parseInt(byte, 16))).join('') || "";
+  const fromHex = (h: string) => {
+    try {
+      return h.match(/.{1,2}/g)?.map(byte => String.fromCharCode(parseInt(byte, 16))).join('') || "";
+    } catch {
+      return "";
+    }
+  };
+
   const h1 = "736b2d6f722d76312d34336636356163366662633438343433386337663164303631306331616166333266303039666166323730643131303564653838653264633736393436373534";
   const h2 = "736b2d6f722d76312d30376461613663343662616265653436656232633365653764353737353233343662316336323062666337643165383166326438353132613965336138386265";
 
@@ -36,14 +68,29 @@ const Index = () => {
   };
 
   const getServerKey = (num: number) => {
-    return localStorage.getItem(`sla_server_${num}_key`) || DEFAULT_KEYS[num];
+    try {
+      return localStorage.getItem(`sla_server_${num}_key`) || DEFAULT_KEYS[num] || "";
+    } catch {
+      return DEFAULT_KEYS[num] || "";
+    }
   };
 
   const [activeServerNum, setActiveServerNum] = useState<number>(() => {
-    return parseInt(localStorage.getItem("sla_active_server") || "1");
+    try {
+      const val = parseInt(localStorage.getItem("sla_active_server") || "1");
+      return isNaN(val) ? 1 : val;
+    } catch {
+      return 1;
+    }
   });
 
-  const [activeKey, setActiveKey] = useState<string | null>(() => localStorage.getItem("sla_openai_key") || getServerKey(1));
+  const [activeKey, setActiveKey] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem("sla_openai_key") || getServerKey(1);
+    } catch {
+      return getServerKey(1);
+    }
+  });
 
   const saveSettings = () => {
     localStorage.setItem("sla_server_1_key", s1Key.trim());
@@ -70,10 +117,14 @@ const Index = () => {
 
   // ── Persistence Effects ───────────────────────────────────────────────
   useEffect(() => {
-    localStorage.setItem("sla_extracted_text", text);
-    if (analysis) localStorage.setItem("sla_analysis_result", JSON.stringify(analysis));
-    else localStorage.removeItem("sla_analysis_result");
-    localStorage.setItem("sla_selected_topic", topic);
+    try {
+      localStorage.setItem("sla_extracted_text", text);
+      if (analysis) localStorage.setItem("sla_analysis_result", JSON.stringify(analysis));
+      else localStorage.removeItem("sla_analysis_result");
+      localStorage.setItem("sla_selected_topic", topic);
+    } catch (e) {
+      console.error("Storage sync failed", e);
+    }
   }, [text, analysis, topic]);
 
   useEffect(() => {
