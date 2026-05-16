@@ -1,79 +1,95 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import { Button } from "../ui/button";
 import { toast } from "sonner";
 
 export const SummaryView = ({ text }: { text: string }) => {
   const [speaking, setSpeaking] = useState(false);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+  const chunksRef = useRef<string[]>([]);
+  const currentChunkRef = useRef(0);
+
+  useEffect(() => {
+    synthRef.current = window.speechSynthesis;
+    return () => {
+      if (synthRef.current) synthRef.current.cancel();
+    };
+  }, []);
+
+  const speakNextChunk = () => {
+    const synth = synthRef.current;
+    if (!synth || currentChunkRef.current >= chunksRef.current.length) {
+      setSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(chunksRef.current[currentChunkRef.current]);
+    
+    // Voice Selection
+    const voices = synth.getVoices();
+    const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) || 
+                          voices.find(v => v.lang.startsWith('en')) || 
+                          voices[0];
+    
+    if (preferredVoice) utterance.voice = preferredVoice;
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    utterance.onend = () => {
+      currentChunkRef.current++;
+      speakNextChunk();
+    };
+
+    utterance.onerror = (event) => {
+      console.error("Speech Error:", event);
+      setSpeaking(false);
+      if (event.error !== 'interrupted') {
+        toast.error("Audio playback failed. Please try again.");
+      }
+    };
+
+    synth.speak(utterance);
+    
+    // Force resume
+    if (synth.paused) synth.resume();
+  };
 
   const toggleSpeech = () => {
-    const synth = window.speechSynthesis;
+    const synth = synthRef.current;
+    if (!synth) return;
 
     if (speaking) {
       synth.cancel();
       setSpeaking(false);
       toast.info("Audio stopped.");
     } else {
-      // Cancel everything first
       synth.cancel();
 
-      // Some browsers require voices to be loaded
+      // Split text into manageable chunks (sentences or max length)
+      // This prevents the 15-second cutoff bug in Chrome/Edge
+      const rawChunks = text.split(/[.!?]+\s+/);
+      chunksRef.current = rawChunks.filter(c => c.trim().length > 0);
+      currentChunkRef.current = 0;
+
+      if (chunksRef.current.length === 0) return;
+
       if (synth.getVoices().length === 0) {
-        toast.info("Loading voices... please try again in a second.");
-        return;
-      }
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      
-      // Voice Selection
-      const voices = synth.getVoices();
-      const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) || 
-                            voices.find(v => v.lang.startsWith('en')) || 
-                            voices[0];
-      
-      if (preferredVoice) utterance.voice = preferredVoice;
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-
-      utterance.onstart = () => {
+        // Try once more after a tiny delay if voices aren't loaded
+        setTimeout(() => {
+          if (synth.getVoices().length > 0) {
+            setSpeaking(true);
+            speakNextChunk();
+          } else {
+            toast.error("Speech voices not loaded yet. Please try again in 2 seconds.");
+          }
+        }, 100);
+      } else {
         setSpeaking(true);
-        toast.success("Playing audio summary...");
-      };
-
-      utterance.onend = () => {
-        setSpeaking(false);
-      };
-
-      utterance.onerror = (event) => {
-        console.error("SpeechSynthesisUtterance error", event);
-        setSpeaking(false);
-        if (event.error !== 'interrupted') {
-          toast.error("Speech synthesis failed. Your browser might not support this feature.");
-        }
-      };
-
-      // Workaround for Chrome/Edge bug where speech stops after 15 seconds
-      const heartbeat = setInterval(() => {
-        if (!synth.speaking) {
-          clearInterval(heartbeat);
-        } else {
-          synth.pause();
-          synth.resume();
-        }
-      }, 10000);
-
-      synth.speak(utterance);
-      
-      // Extra safety: resume immediately in case it's stuck
-      if (synth.paused) {
-        synth.resume();
+        toast.success("Starting audio narration...");
+        speakNextChunk();
       }
     }
   };
-
-  useEffect(() => {
-    return () => window.speechSynthesis.cancel();
-  }, []);
 
   return (
     <div className="glass-strong p-6 rounded-xl animate-fade-up border border-primary/10">
